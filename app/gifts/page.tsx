@@ -1,11 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 
 interface Gift {
   gift_description: string;
   budget: number;
 }
+
+const STORAGE_KEY = "gifts_passcode";
 
 const formatCOP = (value: number) =>
   new Intl.NumberFormat("es-CO", {
@@ -14,25 +16,43 @@ const formatCOP = (value: number) =>
     maximumFractionDigits: 0,
   }).format(value);
 
+async function fetchGifts(code: string): Promise<Gift[]> {
+  const res = await fetch("/api/gifts", {
+    headers: { Authorization: code },
+  });
+  if (!res.ok) {
+    throw new Error("Contraseña incorrecta");
+  }
+  const data = await res.json();
+  return data.gifts;
+}
+
 export default function GiftsPage() {
   const [passcode, setPasscode] = useState("");
   const [gifts, setGifts] = useState<Gift[] | null>(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY);
+    if (saved) {
+      fetchGifts(saved)
+        .then((g) => setGifts(g))
+        .catch(() => localStorage.removeItem(STORAGE_KEY))
+        .finally(() => setLoading(false));
+    } else {
+      setLoading(false);
+    }
+  }, []);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError("");
     setLoading(true);
     try {
-      const res = await fetch("/api/gifts", {
-        headers: { Authorization: passcode },
-      });
-      if (!res.ok) {
-        throw new Error("Contraseña incorrecta");
-      }
-      const data = await res.json();
-      setGifts(data.gifts);
+      const g = await fetchGifts(passcode);
+      localStorage.setItem(STORAGE_KEY, passcode);
+      setGifts(g);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Error inesperado");
     } finally {
@@ -47,7 +67,9 @@ export default function GiftsPage() {
           <h1 className="text-3xl font-bold text-charcoal">Apto Shower</h1>
         </div>
 
-        {gifts === null ? (
+        {loading && gifts === null ? (
+          <div className="text-center text-charcoal/60">Cargando...</div>
+        ) : gifts === null ? (
           <div className="bg-white rounded-2xl shadow-lg border border-warm-200 p-6">
             <h2 className="text-lg font-semibold text-charcoal mb-4 text-center">
               Ingresa la contraseña
