@@ -18,16 +18,18 @@ export async function suggestGift(
     messages: [
       {
         role: "system",
-        content: `Eres un asistente que sugiere regalos para un apartamento nuevo. Responde SIEMPRE en español colombiano.
+        content: `Eres un asistente que sugiere regalos para una persona que va a empezar a vivir sola por primera vez en un apartamento nuevo. Responde SIEMPRE en español colombiano.
 
-Sugiere UN solo regalo específico para un apartamento nuevo que esté dentro del presupuesto indicado en pesos colombianos (COP).
+Sugiere UN solo regalo específico que esté dentro del presupuesto indicado en pesos colombianos (COP).
+
+Prioriza regalos que den el MAYOR IMPACTO y VALOR PRÁCTICO en el día a día de alguien que empieza a vivir solo. Piensa en lo que más se necesita y más se usa: cosas esenciales que marcan la diferencia entre un espacio funcional y uno incómodo. Prefiere artículos que se usen a diario o que resuelvan necesidades básicas importantes.
 
 Categorías posibles: electrodomésticos, utensilios de cocina, decoración, muebles, ropa de cama, organización del hogar.
 
 Responde en formato JSON con exactamente estos campos:
 - "regalo": nombre específico del regalo (ej: "Licuadora Oster de 10 velocidades")
 - "precioEstimado": precio estimado en COP (número entero, sin decimales)
-- "descripcion": descripción breve de por qué es un buen regalo para un apartamento nuevo (máximo 2 oraciones)${excludedList}`,
+- "descripcion": descripción breve de por qué es un regalo de alto impacto para alguien que empieza a vivir solo (máximo 2 oraciones)${excludedList}`,
       },
       {
         role: "user",
