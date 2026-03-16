@@ -24,6 +24,8 @@ export default function Dashboard() {
   const [showBudget, setShowBudget] = useState(true);
   const [editingBudget, setEditingBudget] = useState(false);
   const [updatingBudget, setUpdatingBudget] = useState(false);
+  const [editingSuggestionBudget, setEditingSuggestionBudget] = useState(false);
+  const [prevBudget, setPrevBudget] = useState(0);
   const [discardedGifts, setDiscardedGifts] = useState<string[]>([]);
 
   useEffect(() => {
@@ -232,9 +234,38 @@ export default function Dashboard() {
 
             {suggestion && !showBudget && (
               <div className="space-y-3">
-                <p className="text-sm text-charcoal/60 text-center">
-                  Sugerencia para tu presupuesto de {formatCOP(budget)}
-                </p>
+                {editingSuggestionBudget ? (
+                  <BudgetInput
+                    budget={budget}
+                    onChange={setBudget}
+                    onSubmit={async () => {
+                      if (suggestion) {
+                        const updated = [...discardedGifts, suggestion.regalo];
+                        setDiscardedGifts(updated);
+                        if (attendee) localStorage.setItem(`discarded-gifts-${attendee.id}`, JSON.stringify(updated));
+                      }
+                      setEditingSuggestionBudget(false);
+                      await handleSuggest();
+                    }}
+                    onCancel={() => {
+                      setBudget(prevBudget);
+                      setEditingSuggestionBudget(false);
+                    }}
+                    loading={loading}
+                    submitLabel="Actualizar"
+                  />
+                ) : (
+                  <p
+                    className="text-sm text-charcoal/60 text-center cursor-pointer hover:text-charcoal/70 transition-colors"
+                    onClick={() => {
+                      setPrevBudget(budget);
+                      setEditingSuggestionBudget(true);
+                    }}
+                    title="Clic para editar presupuesto"
+                  >
+                    Sugerencia para tu presupuesto de {formatCOP(budget)} ✎
+                  </p>
+                )}
                 <GiftCard
                   suggestion={suggestion}
                   onAccept={handleAccept}

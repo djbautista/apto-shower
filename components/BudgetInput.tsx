@@ -13,6 +13,7 @@ interface BudgetInputProps {
   budget: number;
   onChange: (value: number) => void;
   onSubmit: () => void;
+  onCancel?: () => void;
   loading?: boolean;
   submitLabel?: string;
 }
@@ -21,6 +22,7 @@ export default function BudgetInput({
   budget,
   onChange,
   onSubmit,
+  onCancel,
   loading,
   submitLabel,
 }: BudgetInputProps) {
@@ -74,13 +76,25 @@ export default function BudgetInput({
         ))}
       </div>
 
-      <button
-        onClick={onSubmit}
-        disabled={loading || budget <= 0}
-        className="w-full py-3 bg-coral-500 hover:bg-coral-600 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
-      >
-        {loading ? (submitLabel ? "Actualizando..." : "Buscando regalo...") : (submitLabel || "Sugerir regalo")}
-      </button>
+      <div className={`flex gap-2 ${onCancel ? "" : "flex-col"}`}>
+        <button
+          onClick={onSubmit}
+          disabled={loading || budget <= 0}
+          className="flex-1 py-3 bg-coral-500 hover:bg-coral-600 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          {loading ? (submitLabel ? "Actualizando..." : "Buscando regalo...") : (submitLabel || "Sugerir regalo")}
+        </button>
+        {onCancel && (
+          <button
+            type="button"
+            onClick={onCancel}
+            disabled={loading}
+            className="flex-1 py-3 border border-warm-300 hover:bg-warm-100 text-charcoal font-semibold rounded-xl transition disabled:opacity-50"
+          >
+            Cancelar
+          </button>
+        )}
+      </div>
     </div>
   );
 }
