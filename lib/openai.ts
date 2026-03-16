@@ -9,11 +9,11 @@ export async function suggestGift(
 ): Promise<GiftSuggestion> {
   const excludedList =
     excludedGifts.length > 0
-      ? `\n\nNO sugieras estos regalos que ya fueron seleccionados por otros invitados:\n- ${excludedGifts.join("\n- ")}`
+      ? `\n\nNO sugieras estos regalos que ya fueron seleccionados por otros invitados:\n- ${excludedGifts.join("\n- ")}\n\nIMPORTANTE: Evita sugerir regalos similares o de la misma categoría que los excluidos. Por ejemplo, si ya existe "utensilios de plástico", NO sugieras "utensilios de metal" ni ningún otro tipo de utensilios. Busca un regalo de una categoría completamente diferente.`
       : "";
 
   const response = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: "gpt-5-mini",
     response_format: { type: "json_object" },
     messages: [
       {
