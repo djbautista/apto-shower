@@ -11,7 +11,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: "No autorizado" }, { status: 401 });
     }
 
-    const { budget } = await request.json();
+    const { budget, discardedGifts = [] } = await request.json();
     if (!budget || budget <= 0) {
       return NextResponse.json(
         { error: "Presupuesto inválido" },
@@ -20,7 +20,8 @@ export async function POST(request: Request) {
     }
 
     const excludedGifts = await getAllSelectedGifts();
-    const suggestion = await suggestGift(budget, excludedGifts);
+    const allExcluded = [...new Set([...excludedGifts, ...discardedGifts])];
+    const suggestion = await suggestGift(budget, allExcluded);
 
     return NextResponse.json({ suggestion });
   } catch (error) {

@@ -24,6 +24,7 @@ export default function Dashboard() {
   const [showBudget, setShowBudget] = useState(true);
   const [editingBudget, setEditingBudget] = useState(false);
   const [updatingBudget, setUpdatingBudget] = useState(false);
+  const [discardedGifts, setDiscardedGifts] = useState<string[]>([]);
 
   useEffect(() => {
     fetch("/api/auth", { method: "GET" })
@@ -38,6 +39,8 @@ export default function Dashboard() {
         if (data?.attendee) {
           setAttendee(data.attendee);
           if (data.attendee.budget) setBudget(data.attendee.budget);
+          const stored = localStorage.getItem(`discarded-gifts-${data.attendee.id}`);
+          if (stored) setDiscardedGifts(JSON.parse(stored));
         }
       })
       .catch(() => router.push("/"));
@@ -50,7 +53,7 @@ export default function Dashboard() {
       const res = await fetch("/api/suggest-gift", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budget }),
+        body: JSON.stringify({ budget, discardedGifts }),
       });
       if (!res.ok) {
         const data = await res.json();
@@ -93,18 +96,29 @@ export default function Dashboard() {
   }
 
   function handleReject() {
+    if (suggestion) {
+      const updated = [...discardedGifts, suggestion.regalo];
+      setDiscardedGifts(updated);
+      if (attendee) localStorage.setItem(`discarded-gifts-${attendee.id}`, JSON.stringify(updated));
+    }
     handleSuggest();
   }
 
   async function handleUpdateBudget() {
     setUpdatingBudget(true);
     setError("");
+    let updatedDiscarded = discardedGifts;
+    if (attendee?.gift_description) {
+      updatedDiscarded = [...discardedGifts, attendee.gift_description.split(" - ")[0]];
+      setDiscardedGifts(updatedDiscarded);
+      localStorage.setItem(`discarded-gifts-${attendee.id}`, JSON.stringify(updatedDiscarded));
+    }
     try {
       // 1. Get a new gift suggestion for the updated budget
       const suggestRes = await fetch("/api/suggest-gift", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ budget }),
+        body: JSON.stringify({ budget, discardedGifts: updatedDiscarded }),
       });
       if (!suggestRes.ok) {
         const data = await suggestRes.json();
@@ -136,6 +150,11 @@ export default function Dashboard() {
   }
 
   function handleChangeGift() {
+    if (attendee?.gift_description) {
+      const updated = [...discardedGifts, attendee.gift_description.split(" - ")[0]];
+      setDiscardedGifts(updated);
+      localStorage.setItem(`discarded-gifts-${attendee.id}`, JSON.stringify(updated));
+    }
     setAttendee((prev) => (prev ? { ...prev, gift_description: null } : null));
     setSuggestion(null);
     setShowBudget(true);
