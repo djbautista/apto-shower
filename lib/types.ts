@@ -15,3 +15,10 @@ export interface GiftSuggestion {
   precioEstimado: number;
   descripcion: string;
 }
+
+export interface GiftValidationResult {
+  conflict: boolean;
+  conflictingGift?: string;
+  alternativeSuggestion?: GiftSuggestion;
+  validatedGift?: GiftSuggestion;
+}

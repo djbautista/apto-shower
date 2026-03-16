@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { Attendee, GiftSuggestion } from "@/lib/types";
+import { Attendee, GiftSuggestion, GiftValidationResult } from "@/lib/types";
 import GiftCard from "@/components/GiftCard";
 import BudgetInput from "@/components/BudgetInput";
 
@@ -27,6 +27,10 @@ export default function Dashboard() {
   const [editingSuggestionBudget, setEditingSuggestionBudget] = useState(false);
   const [prevBudget, setPrevBudget] = useState(0);
   const [discardedGifts, setDiscardedGifts] = useState<string[]>([]);
+  const [showCustomInput, setShowCustomInput] = useState(false);
+  const [customIdea, setCustomIdea] = useState("");
+  const [validationResult, setValidationResult] = useState<GiftValidationResult | null>(null);
+  const [validating, setValidating] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth", { method: "GET" })
@@ -162,6 +166,66 @@ export default function Dashboard() {
     setShowBudget(true);
   }
 
+  async function handleValidateCustomIdea() {
+    if (!customIdea.trim()) return;
+    setError("");
+    setValidating(true);
+    setValidationResult(null);
+    try {
+      const res = await fetch("/api/validate-gift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ giftIdea: customIdea, budget }),
+      });
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error);
+      }
+      const { result } = await res.json();
+      setValidationResult(result);
+      setShowBudget(false);
+      setShowCustomInput(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al validar regalo");
+    } finally {
+      setValidating(false);
+    }
+  }
+
+  function handleAcceptValidated(gift: GiftSuggestion) {
+    setSuggestion(gift);
+    setValidationResult(null);
+    // Trigger accept with this gift
+    setSaving(true);
+    setError("");
+    fetch("/api/update-gift", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        gift: `${gift.regalo} - ${gift.descripcion}`,
+        budget,
+      }),
+    })
+      .then(async (res) => {
+        if (!res.ok) {
+          const data = await res.json();
+          throw new Error(data.error);
+        }
+        const { attendee: updated } = await res.json();
+        setAttendee(updated);
+      })
+      .catch((err) => {
+        setError(err instanceof Error ? err.message : "Error al guardar");
+      })
+      .finally(() => setSaving(false));
+  }
+
+  function handleRejectValidated() {
+    setValidationResult(null);
+    setShowCustomInput(true);
+    setCustomIdea("");
+  }
+
   const hasGift = attendee?.gift_description;
 
   return (
@@ -218,7 +282,7 @@ export default function Dashboard() {
           </div>
         ) : (
           <div className="space-y-6">
-            {showBudget && (
+            {showBudget && !showCustomInput && (
               <div className="bg-white rounded-2xl shadow-lg border border-warm-200 p-6">
                 <h2 className="text-lg font-semibold text-charcoal mb-4">
                   ¿Cuál es tu presupuesto?
@@ -229,10 +293,56 @@ export default function Dashboard() {
                   onSubmit={handleSuggest}
                   loading={loading}
                 />
+                {budget > 0 && (
+                  <button
+                    type="button"
+                    onClick={() => setShowCustomInput(true)}
+                    className="w-full mt-3 py-2 text-sm text-charcoal/60 hover:text-charcoal transition-colors underline underline-offset-2"
+                  >
+                    Tengo una idea
+                  </button>
+                )}
               </div>
             )}
 
-            {suggestion && !showBudget && (
+            {showBudget && showCustomInput && (
+              <div className="bg-white rounded-2xl shadow-lg border border-warm-200 p-6 space-y-4">
+                <h2 className="text-lg font-semibold text-charcoal">
+                  ¿Cuál es tu idea?
+                </h2>
+                <p className="text-sm text-charcoal/60">
+                  Presupuesto: {formatCOP(budget)}
+                </p>
+                <input
+                  type="text"
+                  value={customIdea}
+                  onChange={(e) => setCustomIdea(e.target.value)}
+                  onKeyDown={(e) => e.key === "Enter" && handleValidateCustomIdea()}
+                  placeholder="Ej: Licuadora, juego de sábanas..."
+                  className="w-full border border-warm-200 rounded-xl px-4 py-3 text-charcoal focus:outline-none focus:ring-2 focus:ring-warm-400"
+                />
+                <div className="flex gap-2">
+                  <button
+                    onClick={handleValidateCustomIdea}
+                    disabled={validating || !customIdea.trim()}
+                    className="flex-1 bg-charcoal text-white py-3 rounded-xl font-medium hover:bg-charcoal/90 transition-colors disabled:opacity-50"
+                  >
+                    {validating ? "Validando..." : "Validar idea"}
+                  </button>
+                  <button
+                    onClick={() => {
+                      setShowCustomInput(false);
+                      setCustomIdea("");
+                    }}
+                    className="px-4 py-3 text-charcoal/60 hover:text-charcoal transition-colors"
+                  >
+                    Volver
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {suggestion && !showBudget && !validationResult && (
               <div className="space-y-3">
                 {editingSuggestionBudget ? (
                   <BudgetInput
@@ -272,6 +382,51 @@ export default function Dashboard() {
                   onReject={handleReject}
                   loading={saving || loading}
                 />
+              </div>
+            )}
+
+            {validationResult && !validationResult.conflict && validationResult.validatedGift && (
+              <div className="space-y-3">
+                <p className="text-sm text-charcoal/60 text-center">
+                  Tu idea de regalo
+                </p>
+                <GiftCard
+                  suggestion={validationResult.validatedGift}
+                  onAccept={() => handleAcceptValidated(validationResult.validatedGift!)}
+                  onReject={handleRejectValidated}
+                  loading={saving}
+                />
+              </div>
+            )}
+
+            {validationResult && validationResult.conflict && (
+              <div className="space-y-4">
+                <div className="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 text-sm text-amber-800 text-center">
+                  Tu idea entra en conflicto con un regalo ya seleccionado: <strong>&quot;{validationResult.conflictingGift}&quot;</strong>
+                </div>
+                {validationResult.alternativeSuggestion && (
+                  <div className="space-y-2">
+                    <p className="text-sm text-charcoal/60 text-center">
+                      Te sugerimos esta alternativa:
+                    </p>
+                    <GiftCard
+                      suggestion={validationResult.alternativeSuggestion}
+                      onAccept={() => handleAcceptValidated(validationResult.alternativeSuggestion!)}
+                      onReject={handleRejectValidated}
+                      loading={saving}
+                    />
+                  </div>
+                )}
+                <button
+                  onClick={() => {
+                    setValidationResult(null);
+                    setShowCustomInput(true);
+                    setShowBudget(true);
+                  }}
+                  className="w-full py-2 text-sm text-charcoal/60 hover:text-charcoal transition-colors underline underline-offset-2"
+                >
+                  Intentar con otra idea
+                </button>
               </div>
             )}
           </div>

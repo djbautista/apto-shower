@@ -1,5 +1,5 @@
 import OpenAI from "openai";
-import { GiftSuggestion } from "./types";
+import { GiftSuggestion, GiftValidationResult } from "./types";
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
@@ -41,4 +41,46 @@ Responde en formato JSON con exactamente estos campos:
   const content = response.choices[0].message.content;
   if (!content) throw new Error("No response from OpenAI");
   return JSON.parse(content) as GiftSuggestion;
+}
+
+export async function validateGiftIdea(
+  giftIdea: string,
+  budgetCOP: number,
+  selectedGifts: string[]
+): Promise<GiftValidationResult> {
+  const selectedList =
+    selectedGifts.length > 0
+      ? `\nRegalos ya seleccionados por otros invitados:\n- ${selectedGifts.join("\n- ")}`
+      : "\nNo hay regalos seleccionados aún.";
+
+  const response = await client.chat.completions.create({
+    model: "gpt-5-mini",
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `Eres un asistente que valida ideas de regalo para una persona que va a empezar a vivir sola por primera vez en un apartamento nuevo. Responde SIEMPRE en español colombiano.
+
+Tu tarea es determinar si la idea de regalo del usuario entra en CONFLICTO semántico con algún regalo ya seleccionado. Un conflicto ocurre cuando dos regalos son del mismo tipo o categoría específica y tenerlos ambos sería redundante (ej: "utensilios metálicos" vs "utensilios de plástico", "sábanas de algodón" vs "juego de sábanas").
+
+${selectedList}
+
+Responde en formato JSON con estos campos:
+- "conflict": boolean — true si hay conflicto con algún regalo existente
+- Si conflict es true:
+  - "conflictingGift": string — el nombre del regalo existente con el que hay conflicto
+  - "alternativeSuggestion": objeto con "regalo", "precioEstimado" (número entero en COP), "descripcion" — una alternativa que NO entre en conflicto, dentro del presupuesto
+- Si conflict es false:
+  - "validatedGift": objeto con "regalo" (versión pulida del nombre), "precioEstimado" (número entero en COP, dentro del presupuesto), "descripcion" (breve, máximo 2 oraciones, explicando por qué es útil para alguien que empieza a vivir solo)`,
+      },
+      {
+        role: "user",
+        content: `Mi idea de regalo es: "${giftIdea}". Mi presupuesto es de ${budgetCOP.toLocaleString("es-CO")} COP.`,
+      },
+    ],
+  });
+
+  const content = response.choices[0].message.content;
+  if (!content) throw new Error("No response from OpenAI");
+  return JSON.parse(content) as GiftValidationResult;
 }
