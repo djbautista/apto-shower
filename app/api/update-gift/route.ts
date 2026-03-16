@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
-import { updateGift } from "@/lib/db";
+import { updateGift, updateBudget } from "@/lib/db";
 
 export async function POST(request: Request) {
   try {
@@ -11,14 +11,17 @@ export async function POST(request: Request) {
     }
 
     const { gift, budget } = await request.json();
-    if (!gift || !budget) {
+    if (!budget) {
       return NextResponse.json(
-        { error: "Regalo y presupuesto son requeridos" },
+        { error: "Presupuesto es requerido" },
         { status: 400 }
       );
     }
 
-    const attendee = await updateGift(Number(attendeeId), gift, budget);
+    const id = Number(attendeeId);
+    const attendee = gift
+      ? await updateGift(id, gift, budget)
+      : await updateBudget(id, budget);
     return NextResponse.json({ attendee });
   } catch (error) {
     console.error("Update gift error:", error);

@@ -53,6 +53,19 @@ export async function updateGift(
   return rows[0] as Attendee;
 }
 
+export async function updateBudget(
+  id: number,
+  budget: number
+): Promise<Attendee> {
+  const { rows } = await sql`
+    UPDATE attendees
+    SET budget = ${budget}, updated_at = NOW()
+    WHERE id = ${id}
+    RETURNING *
+  `;
+  return rows[0] as Attendee;
+}
+
 export async function getAllSelectedGifts(): Promise<string[]> {
   const { rows } = await sql`
     SELECT gift_description FROM attendees WHERE gift_description IS NOT NULL

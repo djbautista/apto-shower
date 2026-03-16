@@ -14,6 +14,7 @@ interface BudgetInputProps {
   onChange: (value: number) => void;
   onSubmit: () => void;
   loading?: boolean;
+  submitLabel?: string;
 }
 
 export default function BudgetInput({
@@ -21,6 +22,7 @@ export default function BudgetInput({
   onChange,
   onSubmit,
   loading,
+  submitLabel,
 }: BudgetInputProps) {
   function handleInputChange(e: React.ChangeEvent<HTMLInputElement>) {
     const raw = e.target.value.replace(/\D/g, "");
@@ -77,7 +79,7 @@ export default function BudgetInput({
         disabled={loading || budget <= 0}
         className="w-full py-3 bg-coral-500 hover:bg-coral-600 text-white font-semibold rounded-xl transition disabled:opacity-50 disabled:cursor-not-allowed"
       >
-        {loading ? "Buscando regalo..." : "Sugerir regalo"}
+        {loading ? (submitLabel ? "Actualizando..." : "Buscando regalo...") : (submitLabel || "Sugerir regalo")}
       </button>
     </div>
   );

@@ -22,6 +22,8 @@ export default function Dashboard() {
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
   const [showBudget, setShowBudget] = useState(true);
+  const [editingBudget, setEditingBudget] = useState(false);
+  const [updatingBudget, setUpdatingBudget] = useState(false);
 
   useEffect(() => {
     fetch("/api/auth", { method: "GET" })
@@ -94,6 +96,45 @@ export default function Dashboard() {
     handleSuggest();
   }
 
+  async function handleUpdateBudget() {
+    setUpdatingBudget(true);
+    setError("");
+    try {
+      // 1. Get a new gift suggestion for the updated budget
+      const suggestRes = await fetch("/api/suggest-gift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ budget }),
+      });
+      if (!suggestRes.ok) {
+        const data = await suggestRes.json();
+        throw new Error(data.error);
+      }
+      const { suggestion: newSuggestion } = await suggestRes.json();
+
+      // 2. Save the new gift + budget together
+      const updateRes = await fetch("/api/update-gift", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          gift: `${newSuggestion.regalo} - ${newSuggestion.descripcion}`,
+          budget,
+        }),
+      });
+      if (!updateRes.ok) {
+        const data = await updateRes.json();
+        throw new Error(data.error);
+      }
+      const { attendee: updated } = await updateRes.json();
+      setAttendee(updated);
+      setEditingBudget(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Error al actualizar presupuesto");
+    } finally {
+      setUpdatingBudget(false);
+    }
+  }
+
   function handleChangeGift() {
     setAttendee((prev) => (prev ? { ...prev, gift_description: null } : null));
     setSuggestion(null);
@@ -124,9 +165,25 @@ export default function Dashboard() {
           <div className="space-y-4">
             <div className="text-center">
               <p className="text-sm text-charcoal/60 mb-1">Tu regalo seleccionado</p>
-              <p className="text-sm text-charcoal/50">
-                Presupuesto: {formatCOP(attendee.budget!)}
-              </p>
+              {editingBudget ? (
+                <div className="flex items-center justify-center gap-2 mt-2">
+                  <BudgetInput
+                    budget={budget}
+                    onChange={setBudget}
+                    onSubmit={handleUpdateBudget}
+                    loading={updatingBudget}
+                    submitLabel="Actualizar presupuesto"
+                  />
+                </div>
+              ) : (
+                <p
+                  className="text-sm text-charcoal/50 cursor-pointer hover:text-charcoal/70 transition-colors"
+                  onClick={() => setEditingBudget(true)}
+                  title="Clic para editar presupuesto"
+                >
+                  Presupuesto: {formatCOP(attendee.budget!)} ✎
+                </p>
+              )}
             </div>
             <GiftCard
               suggestion={{
