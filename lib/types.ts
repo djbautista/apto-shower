@@ -4,6 +4,8 @@ export interface Attendee {
   pin: string;
   gift_description: string | null;
   budget: number | null;
+  failed_login_attempts: number;
+  locked: boolean;
   created_at: Date;
   updated_at: Date;
 }
